@@ -1,29 +1,21 @@
 (ns tessellate.core
-    (:require [reagent.core :as reagent :refer [atom]]))
+  (:require [reagent.core :as reagent :refer [atom]]
+            [devtools.core :as core]))
 
 (enable-console-print!)
-
 
 (def board-size
   {:x 3
    :y 3})
 
-(deftype ColourCycle [colours])
-
-(derive ColourCycle clojure.lang.Cycle)
-
-(defmethod print-method ColourCycle [x]
-  (print (first x)))
-
-(def tst (gen-colour-cycle ["red" "blue"]))
-
-(defn gen-colour-cycle
-  [colours]
-  (ColourCycle. (drop (rand-int 3) (cycle colours))))
-
-(defn gen-colour-seq
-  [colours]
-  (drop (rand-int 3) (cycle colours)))
+(defn rotate
+  ([s] (rotate 1 s))
+  ([n s]
+   (let [c (count s)]
+     (take c
+       (drop
+         n
+         (cycle s))))))
 
 (defn new-board
   [board-size colours]
@@ -33,7 +25,7 @@
      [(gensym)
       {:coord {:x x
                :y y}
-       :colour (gen-colour-seq colours)}])))
+       :colour (rotate (rand-int (count colours)) colours)}])))
 
 (defonce app-state (atom {:title "Let's trux it up!"
                           :board (new-board board-size ["red" "blue"])}))
@@ -50,8 +42,7 @@
 
 (defn tile-click-handler
   [id]
-  ;; (println "You clicked me!")
-  (swap! app-state update-in [:board id :colour] rest))
+  (swap! app-state update-in [:board id :colour] rotate))
 
 (println "Hello?")
 
@@ -87,5 +78,5 @@
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
-  (swap! app-state assoc-in [:board] (new-board board-size ["red" "blue"]))
+  (swap! app-state assoc-in [:board] (new-board board-size ["green" "blue"]))
   )
