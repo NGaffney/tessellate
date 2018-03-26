@@ -22,31 +22,50 @@
   (into {}
    (for [x (range (:x board-size))
          y (range (:y board-size))]
-     [(gensym)
+     [(keyword (gensym))
       {:coord {:x x
                :y y}
        :colour (rotate (rand-int (count colours)) colours)}])))
 
 (defonce app-state (atom {:title "Let's trux it up!"
-                          :board (new-board board-size ["red" "blue"])}))
+                          :board.board (new-board board-size ["red" "blue"])}))
+
+(defn dxy
+  "The difference between two tiles."
+  [t1 t2]
+ (->> [t1 t2]
+   (map :coord)
+   (apply merge-with vector)
+   vals
+   (map #(reduce (comp Math/abs -) %))
+   (reduce +)))
 
 (defn neighbours
-  [id]
-  (let [b (:board @app-state)
-        t (id @app-state)]
-    (filter
-      (fn [[k v]]
-        (= 1 (+
-           (Math/abs (- (:x v) (:x t)))
-           (Math/abs (- (:y v) (:y t)))))))))
+  [b id]
+  (let [t (id b)]
+    (into {}
+     (filter
+       #(->> % val (dxy t) (= 1))
+       b))))
 
-(defn tile-click-handler
-  [id]
-  (swap! app-state update-in [:board id :colour] rotate))
+(defn nbr [id] (neighbours (:board @app-state) id))
+
+(defn board [] (:board @app-state))
+
+(defn rotate-neighbours
+  [b id]
+  (let [ids (into [id] (-> id nbr keys))]
+   (reduce
+     (fn [b k] (update-in b [k :colour] rotate))
+     b
+     ids)))
+
+(defn tile-click-handler [id]
+  (swap! app-state update :board rotate-neighbours id))
 
 (println "Hello?")
 
-(defn render-tile
+(defn tile
   [id t]
   (let [x (get-in t [:coord :x])
         y (get-in t [:coord :y])
@@ -62,21 +81,21 @@
        :on-click (partial tile-click-handler id)}]))
 
 (defn tesselate []
-  [:center
-   [:h1 (:title @app-state)]
-   [:svg
+  [:center.app
+   [:h1.title (:title @app-state)]
+   [:svg.board
     {:view-box "0 0 1 1"
      :width 256
      :height 256}
     (for [[k t] (:board @app-state)]
-      (render-tile k t))]])
+      (tile k t))]
+   [:h3.options "Test?"]])
 
-(reagent/render-component [tesselate]
-                          (. js/document (getElementById "app")))
+(reagent/render-component [tesselate] (. js/document (getElementById "app")))
 
 (defn on-js-reload []
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
-  (swap! app-state assoc-in [:board] (new-board board-size ["green" "blue"]))
+  (swap! app-state assoc-in [:board] (new-board board-size ["green" "blue"])) 
   )
